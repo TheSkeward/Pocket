@@ -82,3 +82,6 @@ celerybeat-schedule
 
 # Vim files
 *.swp
+
+# Ignore database file; that will grow variably
+pocket.db
