@@ -2,7 +2,7 @@
 
 import discord
 import asyncio
-import sqlite3, random
+import sqlite3, random, re
 import logging
 
 # Logging setup
@@ -80,19 +80,23 @@ def process_triggers(message: str) -> str or None:
         return random.choice(result)[0]
     else: return None
 
-def populate(message: str) -> str:
+def populate(response: str) -> str:
     """
     Replaces variables in a response with values. ie $who with a random active user, or $item with a random item
     Replaces <command> with an appropriate variation
     """
     # Check for phrase shortcuts
-    if message == "<unknown>":
-        message = "I don't know anything about that, $who."
+    command_response = re.compile("^<\w+>$").match(response)
+    if command_response:
+        c.execute("SELECT response FROM auto_responses WHERE command=?", (command_response.group(),))
+        result = c.fetchall()
+        if result:
+            response = random.choice(result)[0]
+        else: raise ValueError(response + " is not a known command.")
 
-    # Check for phrase variables in message
-    message = message.replace("$who", "someone")     # Replace with random at some point
+    response = response.replace("$who", "someone")      # Replace with random at some point
 
-    return message
+    return response
 
 
 client.run("a_muse_ing@mail.com", "Amusement4Masses")

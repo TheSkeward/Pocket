@@ -8,3 +8,10 @@ CREATE TABLE IF NOT EXISTS comments (
     protected BOOLEAN default false,
     UNIQUE (triggers, remark) ON CONFLICT FAIL
 );
+
+CREATE TABLE IF NOT EXISTS auto_responses (
+    id INTEGER NOT NULL PRIMARY KEY ASC,
+    command TEXT NOT NULL,
+    response TEXT NOT NULL,
+    UNIQUE (command, response) ON CONFLICT FAIL
+);
