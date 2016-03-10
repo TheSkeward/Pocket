@@ -25,20 +25,23 @@ async def on_message(message: discord.Message):
 
     # Ignore those to be ignored
     if not message.author.id in ignore_list:
-        addressed, content = process_addressee(message)
+        addressed, content = process_meta(message)
         response = respond(message, content.strip(), addressed)
         if response:                                # Only send_message if there is a response; most of the time, there won't be.
             await client.send_message(message.channel, populate(message, response))
 
 
-def process_addressee(message: discord.Message) -> (bool, str):
+def process_meta(message: discord.Message) -> (bool, str):
     """
     Determines if Pocket was directly addressed, ie "Pocket, inspire me" or "pocket: give me a suggestion"
     If he was addressed, returns true and the rest of the message. If not, then return false and the message.
+    Cleans up the message, too.
     """
     prefix = message.content.split()[0].lower()
     if prefix == "pocket," or prefix == "pocket:":
         return (True, message.content[7:])          # Remove the prefix ("pocket," or "Pocket:"), which is 5 chars long
+    if message.content.startswith("_") and message.content.endswith("_"):
+        return (False, message.contetn[1:-1])
     return (False, message.content)
 
 def respond(context: discord.Message, message: str, addressed: bool) -> str or None:
@@ -65,7 +68,8 @@ def respond(context: discord.Message, message: str, addressed: bool) -> str or N
 def process_commands(message: str) -> str or None:
     if "<reply>" in message:
         try:
-            tidbit = tuple(portion.strip() for portion in message.split("<reply>"))
+            tidbit = [portion.strip() for portion in message.split("<reply>")]
+            tidbit[0] = tidbit[0].lower()       # Lowercase the trigger; it has to be case insensitive.
             c.execute("INSERT OR FAIL INTO comments (triggers, remark, protected) VALUES (?, ?, 0);", tidbit)
             conn.commit()
         except sqlite3.IntegrityError as e:
