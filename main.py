@@ -2,12 +2,14 @@
 
 import discord
 import asyncio
+import sqlite3, random
 import logging
 
 # Logging setup
 logging.basicConfig(level=logging.INFO)
 
-
+conn = sqlite3.connect("pocket.db")
+c = conn.cursor()
 client = discord.Client()
 
 ignore_list = []
@@ -61,12 +63,22 @@ def respond(context: discord.Message, message: str, addressed: bool) -> str or N
     else: return None
 
 def process_commands(message: str) -> str or None:
-    if "is" in message:
-        return "Command: " + message
+    if "<reply>" in message:
+        try:
+            tidbit = tuple(portion.strip() for portion in message.split("<reply>"))
+            c.execute("INSERT OR FAIL INTO comments (triggers, remark, protected) VALUES (?, ?, 0);", tidbit)
+            conn.commit()
+        except sqlite3.IntegrityError as e:
+            # If IntegrityError, Pocket already has this tidbit.
+            return "I already had it that way, $who."
+        return "Ok, $who. \"" + tidbit[0] + "\" triggers \"" + tidbit[1] + "\"."
 
 def process_triggers(message: str) -> str or None:
-    if "shamrock" in message:
-        return message + " said by $who."
+    c.execute("SELECT remark FROM comments WHERE triggers=?", (message.lower(),))
+    result = c.fetchall()
+    if result:
+        return random.choice(result)[0]
+    else: return None
 
 def populate(message: str) -> str:
     """
