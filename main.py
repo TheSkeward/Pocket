@@ -13,6 +13,8 @@ c = conn.cursor()
 client = discord.Client()
 
 ignore_list = []
+inventory = []
+pocket_size = 7
 
 @client.event
 async def on_ready():
@@ -77,7 +79,7 @@ def process_commands(message: str) -> str or None:
             return "I already had it that way, $who."
         return "Ok, $who. \"" + tidbit[0] + "\" triggers \"" + tidbit[1] + "\"."
 
-    result = process_item_triggers(message, True)
+    result = process_inventory_triggers(message, True)
     if result:
         return result
 
@@ -89,32 +91,68 @@ def process_triggers(message: str) -> str or None:
     if result:
         return random.choice(result)[0]
 
-    result = process_item_triggers(message, False)
+    result = process_inventory_triggers(message, False)
     if result:
         return result
 
     return None
 
-def process_item_triggers(message: str, addressed: bool) -> str or None:
+def process_inventory_triggers(message: str, addressed: bool) -> str or None:
     """
-    Proccesses a message (both triggers and commmands) for an item.
+    Proccesses a message (both triggers and commmands) regarding the inventory.
     """
-    # Addressed inventory commands
-    addressed_commands = [(re.compile("have (.+)"), (5,))]
-    # Non-addressed inventory commands
-    unaddressed_commands = [(re.compile("puts (.+) in pocket$"), (5, -10)),
-                            (re.compile("gives pocket (.+)$"), (13,)),
-                            (re.compile("gives (.+) to pocket$"), (6, -10)),
-                            (re.compile("have (.+), pocket$"), (5, -8))]
-
     # Prep the message for processing
     message = message.lower().strip(".").strip("!")
-    for command, indices in unaddressed_commands + addressed_commands if addressed else unaddressed_commands:
+
+    ### GIVE ITEM commands ###
+    # Addressed commands
+    addressed_give = [(re.compile("have (.+)"), (5,))]
+    # Non-addressed commands
+    unaddressed_give = [(re.compile("puts (.+) in pocket$"), (5, -10)),
+                        (re.compile("gives pocket (.+)$"), (13,)),
+                        (re.compile("gives (.+) to pocket$"), (6, -10)),
+                        (re.compile("have (.+), pocket$"), (5, -8))]
+    for command, indices in unaddressed_give + addressed_give if addressed else unaddressed_give:
         given_thing = command.match(message)
         if given_thing:
-            return "Sure, I'll take " + given_thing.group(1) + "."
+            return inventory_add(given_thing.group(1))
+            #return "Sure, I'll take " + given_thing.group(1) + "."
+
+    ### DROP ITEM commands ###
+    # Addressed commands
+    addressed_drop = [re.compile("drop something")]
+    for command in addressed_drop:
+        if command.match(message):
+            return inventory_remove()[1]
 
     return None
+
+def inventory_add(new_item: str) -> str:
+    """
+    Adds new_item to the inventory. If inventory full, or is a duplicate, doesn't add.
+    Either way, returns with an appropriate response.
+    """
+    if not len(inventory) < pocket_size:
+        response = "<replace item>"
+
+    if not new_item in inventory:
+        inventory.append(new_item)
+        response = "<get item>"
+    else:
+        response = "<duplicate item>"
+
+    if response: return response + new_item
+    else: return None
+
+def inventory_drop() -> (str, str):
+    """
+    Removes a random item from inventory. If inventory is empty, return appropriate response.
+    Returns (dropped_item, response)
+    """
+    if not inventory: return (None, "<inventory empty>")
+    else:
+        dropped = inventory.pop(random.randrange(0, len(inventory)))
+        return (dropped, "<drop item>")
 
 def populate(context: discord.Message, response: str) -> str:
     """
@@ -122,13 +160,21 @@ def populate(context: discord.Message, response: str) -> str:
     Replaces <command> with an appropriate variation
     """
     # Check for phrase shortcuts
-    command_response = re.compile("^<\w+>$").match(response)
+    command_response = re.compile("^(<.+>)(.*)$").match(response)
     if command_response:
-        c.execute("SELECT response FROM auto_responses WHERE command=?", (command_response.group(),))
+        logging.info(command_response.group(1) + ":" + command_response.group(2))
+        c.execute("SELECT response FROM auto_responses WHERE command=?", (command_response.group(1),))
         result = c.fetchall()
         if result:
             response = random.choice(result)[0]
         else: raise ValueError(response + " is not a known command.")
+
+        # Replace %received with the item received, if any.
+        if "%received" in response:
+            if len(command_response.groups()) > 2:
+                response = response.replace("%received", command_response.group(2))
+            else: raise ValueError("No %received value passed, as was expected.")
+        logging.info(response)
 
     ### Placeholder Operations ###
 
@@ -138,6 +184,12 @@ def populate(context: discord.Message, response: str) -> str:
     # -- $someone : replaces with a random online user
     online_peeps = list(context.server.members)
     response = response.replace("$someone", random.choice(online_peeps).name)
+
+    # -- $item : replaces with a random item in the inventory, if there is one.
+    if "$item" in response:
+        item_drop = inventory_drop()
+        if item_drop[0]: response = response.replace("$item", item_drop[0])
+        else: return populate(context, item_drop[1])    # If empty, can't drop anything.
 
     return response
 
