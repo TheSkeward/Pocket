@@ -10,9 +10,12 @@ INSERT OR IGNORE INTO auto_responses (command, response) VALUES
     ('<unknown>', "BEEEEEEP BOOP BOOOOOP WHEEEEEeeee"),
     ('<unknown>', "How should I know? I'm just a bot."),
     ('<get item>', "Thanks, I'll take %received."),
-    ('<get item>', "Ok, $who."),
+    ('<get item>', "Sure, I'll take %received."),
+    ('<get item>', "Okay, $who."),
     ('<replace item>', "/me drops $item and takes %received."),
     ('<replace item>', "/me hands $who $item and takes %received."),
     ('<duplicate item>', "I already have one of those."),
     ('<inventory empty>', "But I'm empty : ("),
-    ('<drop item>', "/me gives $who $item");
+    ('<drop item>', "_gives $who $item_"),
+    ('<drop item>', "_hands $who $item_"),
+    ('<drop item>', "_drops $item_");

@@ -15,10 +15,9 @@ query = open('pocket.sql', 'r').read()
 c.executescript(query)
 conn.commit()
 
-if __name__ == "__main__":
-    query = open("sample.sql", 'r').read()
-    c.executescript(query)
-    conn.commit()
+query = open("sample.sql", 'r').read()
+c.executescript(query)
+conn.commit()
 
 c.close()
 conn.close()

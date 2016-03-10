@@ -8,6 +8,9 @@ import logging
 # Logging setup
 logging.basicConfig(level=logging.INFO)
 
+# initialize database if anything's missing from it.
+import init_db
+
 conn = sqlite3.connect("pocket.db")
 c = conn.cursor()
 client = discord.Client()
@@ -102,28 +105,29 @@ def process_inventory_triggers(message: str, addressed: bool) -> str or None:
     Proccesses a message (both triggers and commmands) regarding the inventory.
     """
     # Prep the message for processing
-    message = message.lower().strip(".").strip("!")
+    message = message.strip(".").strip("!")
 
     ### GIVE ITEM commands ###
     # Addressed commands
-    addressed_give = [(re.compile("have (.+)"), (5,))]
+    addressed_give = [re.compile("(?:have|take) (.+)$", re.IGNORECASE)]
     # Non-addressed commands
-    unaddressed_give = [(re.compile("puts (.+) in pocket$"), (5, -10)),
-                        (re.compile("gives pocket (.+)$"), (13,)),
-                        (re.compile("gives (.+) to pocket$"), (6, -10)),
-                        (re.compile("have (.+), pocket$"), (5, -8))]
-    for command, indices in unaddressed_give + addressed_give if addressed else unaddressed_give:
+    unaddressed_give = [re.compile("puts (.+) in pocket$", re.IGNORECASE),
+                        re.compile("gives pocket (.+)$", re.IGNORECASE),
+                        re.compile("gives (.+) to pocket$", re.IGNORECASE),
+                        re.compile("(?:have|take) (.+), pocket$", re.IGNORECASE)]
+    for command in unaddressed_give + addressed_give if addressed else unaddressed_give:
         given_thing = command.match(message)
         if given_thing:
+            logging.info(str(given_thing))
+            logging.info(str(given_thing.groups()))
             return inventory_add(given_thing.group(1))
-            #return "Sure, I'll take " + given_thing.group(1) + "."
 
     ### DROP ITEM commands ###
     # Addressed commands
-    addressed_drop = [re.compile("drop something")]
+    addressed_drop = [re.compile("drop something", re.IGNORECASE)]
     for command in addressed_drop:
         if command.match(message):
-            return inventory_remove()[1]
+            return "<drop item>"
 
     return None
 
@@ -141,18 +145,20 @@ def inventory_add(new_item: str) -> str:
     else:
         response = "<duplicate item>"
 
+    logging.info(str(inventory))
     if response: return response + new_item
     else: return None
 
-def inventory_drop() -> (str, str):
+def inventory_drop() -> str:
     """
     Removes a random item from inventory. If inventory is empty, return appropriate response.
-    Returns (dropped_item, response)
+    Returns dropped item or None
     """
-    if not inventory: return (None, "<inventory empty>")
+    logging.info(str(inventory))
+    if not inventory: return None
     else:
         dropped = inventory.pop(random.randrange(0, len(inventory)))
-        return (dropped, "<drop item>")
+        return dropped
 
 def populate(context: discord.Message, response: str) -> str:
     """
@@ -171,9 +177,10 @@ def populate(context: discord.Message, response: str) -> str:
 
         # Replace %received with the item received, if any.
         if "%received" in response:
-            if len(command_response.groups()) > 2:
+            if len(command_response.groups()) > 1:
                 response = response.replace("%received", command_response.group(2))
             else: raise ValueError("No %received value passed, as was expected.")
+
         logging.info(response)
 
     ### Placeholder Operations ###
@@ -188,8 +195,8 @@ def populate(context: discord.Message, response: str) -> str:
     # -- $item : replaces with a random item in the inventory, if there is one.
     if "$item" in response:
         item_drop = inventory_drop()
-        if item_drop[0]: response = response.replace("$item", item_drop[0])
-        else: return populate(context, item_drop[1])    # If empty, can't drop anything.
+        if item_drop: response = response.replace("$item", item_drop)
+        else: return populate(context, "inventory empty")   # If empty, can't drop anything.
 
     return response
 
