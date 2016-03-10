@@ -28,7 +28,7 @@ async def on_message(message: discord.Message):
         addressed, content = process_addressee(message)
         response = respond(message, content.strip(), addressed)
         if response:                                # Only send_message if there is a response; most of the time, there won't be.
-            await client.send_message(message.channel, populate(response))
+            await client.send_message(message.channel, populate(message, response))
 
 
 def process_addressee(message: discord.Message) -> (bool, str):
@@ -80,7 +80,7 @@ def process_triggers(message: str) -> str or None:
         return random.choice(result)[0]
     else: return None
 
-def populate(response: str) -> str:
+def populate(context: discord.Message, response: str) -> str:
     """
     Replaces variables in a response with values. ie $who with a random active user, or $item with a random item
     Replaces <command> with an appropriate variation
@@ -94,7 +94,14 @@ def populate(response: str) -> str:
             response = random.choice(result)[0]
         else: raise ValueError(response + " is not a known command.")
 
-    response = response.replace("$who", "someone")      # Replace with random at some point
+    ### Placeholder Operations ###
+
+    # -- $who : replaces with the sender of the message
+    response = response.replace("$who", context.author.name)
+
+    # -- $someone : replaces with a random online user
+    online_peeps = list(context.server.members)
+    response = response.replace("$someone", random.choice(online_peeps).name)
 
     return response
 
