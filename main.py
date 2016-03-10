@@ -129,6 +129,15 @@ def process_inventory_triggers(message: str, addressed: bool) -> str or None:
         if command.match(message):
             return "<drop item>"
 
+    ### LIST INVENTORY commands ###
+    if re.compile("inventory").match(message):
+        if inventory:
+            response = "_contains "
+            for item in inventory[:-1]: response += (item + ", ")
+            response += "and " + inventory[-1] + "._"
+            return response
+        else: return "<inventory empty>"
+
     return None
 
 def inventory_add(new_item: str) -> str:
