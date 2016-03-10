@@ -16,8 +16,29 @@ c = conn.cursor()
 client = discord.Client()
 
 ignore_list = []
-inventory = []
+
 pocket_size = 7
+class inventory():
+    def size():
+        c.execute("SELECT COUNT(*) FROM inventory LIMIT 1;")
+        return int(c.fetchone()[0])
+    def add(item: str):
+        c.execute("INSERT INTO inventory (item) VALUES (?);", (item,))
+        conn.commit()
+    def pop() -> str:
+        """
+        Randomly removes and returns one of the items in inventory.
+        """
+        c.execute("SELECT id FROM inventory;")
+        rand_id = random.choice(c.fetchall())[0]
+        c.execute("SELECT item FROM inventory WHERE id=? LIMIT 1;", (rand_id,))
+        popped_item = c.fetchone()[0]
+        c.execute("DELETE FROM inventory WHERE id=?;", (rand_id,))
+        conn.commit()
+        return popped_item
+    def list():
+        c.execute("SELECT item FROM inventory;")
+        return [item_tuple[0] for item_tuple in c.fetchall()]
 
 @client.event
 async def on_ready():
@@ -118,8 +139,6 @@ def process_inventory_triggers(message: str, addressed: bool) -> str or None:
     for command in unaddressed_give + addressed_give if addressed else unaddressed_give:
         given_thing = command.match(message)
         if given_thing:
-            logging.info(str(given_thing))
-            logging.info(str(given_thing.groups()))
             return inventory_add(given_thing.group(1))
 
     ### DROP ITEM commands ###
@@ -131,11 +150,13 @@ def process_inventory_triggers(message: str, addressed: bool) -> str or None:
 
     ### LIST INVENTORY commands ###
     if re.compile("inventory").match(message):
-        if inventory:
+        if inventory.size() > 1:
             response = "_contains "
-            for item in inventory[:-1]: response += (item + ", ")
-            response += "and " + inventory[-1] + "._"
+            for item in inventory.list()[:-1]: response += (item + ", ")
+            response += "and " + inventory.list()[-1] + "._"
             return response
+        elif inventory.size() == 1:
+            return "_contains " + inventory.list()[0] + "._"
         else: return "<inventory empty>"
 
     return None
@@ -145,16 +166,15 @@ def inventory_add(new_item: str) -> str:
     Adds new_item to the inventory. If inventory full, or is a duplicate, doesn't add.
     Either way, returns with an appropriate response.
     """
-    if not len(inventory) < pocket_size:
+    if not inventory.size() < pocket_size:
+        inventory.add(new_item)
         response = "<replace item>"
 
-    if not new_item in inventory:
-        inventory.append(new_item)
+    elif not new_item in inventory.list():
+        inventory.add(new_item)
         response = "<get item>"
-    else:
-        response = "<duplicate item>"
+    else: response = "<duplicate item>"
 
-    logging.info(str(inventory))
     if response: return response + new_item
     else: return None
 
@@ -163,10 +183,9 @@ def inventory_drop() -> str:
     Removes a random item from inventory. If inventory is empty, return appropriate response.
     Returns dropped item or None
     """
-    logging.info(str(inventory))
-    if not inventory: return None
+    if not inventory.size() > 0: return None
     else:
-        dropped = inventory.pop(random.randrange(0, len(inventory)))
+        dropped = inventory.pop()
         return dropped
 
 def populate(context: discord.Message, response: str) -> str:
@@ -177,7 +196,6 @@ def populate(context: discord.Message, response: str) -> str:
     # Check for phrase shortcuts
     command_response = re.compile("^(<.+>)(.*)$").match(response)
     if command_response:
-        logging.info(command_response.group(1) + ":" + command_response.group(2))
         c.execute("SELECT response FROM auto_responses WHERE command=?", (command_response.group(1),))
         result = c.fetchall()
         if result:
@@ -190,7 +208,6 @@ def populate(context: discord.Message, response: str) -> str:
                 response = response.replace("%received", command_response.group(2))
             else: raise ValueError("No %received value passed, as was expected.")
 
-        logging.info(response)
 
     ### Placeholder Operations ###
 

@@ -15,3 +15,8 @@ CREATE TABLE IF NOT EXISTS auto_responses (
     response TEXT NOT NULL,
     UNIQUE (command, response) ON CONFLICT FAIL
 );
+
+CREATE TABLE IF NOT EXISTS inventory (
+    id INTEGER NOT NULL PRIMARY KEY ASC,
+    item TEXT NOT NULL UNIQUE
+)
