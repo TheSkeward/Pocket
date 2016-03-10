@@ -82,6 +82,7 @@ celerybeat-schedule
 
 # Vim files
 *.swp
+*.swo
 
 # Ignore database file; that will grow variably
 pocket.db

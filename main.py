@@ -2,7 +2,7 @@
 
 import discord
 import asyncio
-import sqlite3, random, re
+import sqlite3, random, re, string
 import logging
 
 # Logging setup
@@ -77,12 +77,46 @@ def process_commands(message: str) -> str or None:
             return "I already had it that way, $who."
         return "Ok, $who. \"" + tidbit[0] + "\" triggers \"" + tidbit[1] + "\"."
 
+    result = process_item_triggers(message, True)
+    if result:
+        return result
+
+    return None
+
 def process_triggers(message: str) -> str or None:
     c.execute("SELECT remark FROM comments WHERE triggers=?", (message.lower(),))
     result = c.fetchall()
     if result:
         return random.choice(result)[0]
-    else: return None
+
+    result = process_item_triggers(message, False)
+    if result:
+        return result
+
+    return None
+
+def process_item_triggers(message: str, addressed: bool) -> str or None:
+    """
+    Proccesses a message (both triggers and commmands) for an item.
+    """
+    # Addressed inventory commands
+    addressed_commands = [(re.compile("have .+"), (5,))]
+    # Non-addressed inventory commands
+    unaddressed_commands = [(re.compile("puts .+ in pocket$"), (5, -10)),
+                            (re.compile("gives pocket .+$"), (13,)),
+                            (re.compile("gives .+ to pocket$"), (6, -10)),
+                            (re.compile("have .+, pocket$"), (5, -8))]
+
+    # Prep the message for processing
+    message = ''.join(char for char in message.lower() if char not in string.punctuation)
+    for command, indices in unaddressed_commands + addressed_commands if addressed else unaddressed_commands:
+        given_thing = command.match(message)
+        if given_thing:
+            item = given_thing.group()[indices[0]:indices[1]] if len(indices) == 2 else given_thing.group()[indices[0]:]
+            logging.info(item)
+            return "Sure, I'll take " + item + "."
+
+    return None
 
 def populate(context: discord.Message, response: str) -> str:
     """
