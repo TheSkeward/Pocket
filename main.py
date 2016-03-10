@@ -100,21 +100,19 @@ def process_item_triggers(message: str, addressed: bool) -> str or None:
     Proccesses a message (both triggers and commmands) for an item.
     """
     # Addressed inventory commands
-    addressed_commands = [(re.compile("have .+"), (5,))]
+    addressed_commands = [(re.compile("have (.+)"), (5,))]
     # Non-addressed inventory commands
-    unaddressed_commands = [(re.compile("puts .+ in pocket$"), (5, -10)),
-                            (re.compile("gives pocket .+$"), (13,)),
-                            (re.compile("gives .+ to pocket$"), (6, -10)),
-                            (re.compile("have .+, pocket$"), (5, -8))]
+    unaddressed_commands = [(re.compile("puts (.+) in pocket$"), (5, -10)),
+                            (re.compile("gives pocket (.+)$"), (13,)),
+                            (re.compile("gives (.+) to pocket$"), (6, -10)),
+                            (re.compile("have (.+), pocket$"), (5, -8))]
 
     # Prep the message for processing
-    message = ''.join(char for char in message.lower() if char not in string.punctuation)
+    message = message.lower().strip(".").strip("!")
     for command, indices in unaddressed_commands + addressed_commands if addressed else unaddressed_commands:
         given_thing = command.match(message)
         if given_thing:
-            item = given_thing.group()[indices[0]:indices[1]] if len(indices) == 2 else given_thing.group()[indices[0]:]
-            logging.info(item)
-            return "Sure, I'll take " + item + "."
+            return "Sure, I'll take " + given_thing.group(1) + "."
 
     return None
 
