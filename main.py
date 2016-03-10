@@ -41,7 +41,7 @@ def process_meta(message: discord.Message) -> (bool, str):
     if prefix == "pocket," or prefix == "pocket:":
         return (True, message.content[7:])          # Remove the prefix ("pocket," or "Pocket:"), which is 5 chars long
     if message.content.startswith("_") and message.content.endswith("_"):
-        return (False, message.contetn[1:-1])
+        return (False, message.content[1:-1])
     return (False, message.content)
 
 def respond(context: discord.Message, message: str, addressed: bool) -> str or None:
