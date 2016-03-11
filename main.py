@@ -2,7 +2,7 @@
 
 import discord
 import asyncio
-import sqlite3, random, re, string
+import sqlite3, random, re, string, time
 import logging
 
 # Logging setup
@@ -54,6 +54,7 @@ async def on_message(message: discord.Message):
         addressed, content = process_meta(message)
         response = respond(message, content.strip(), addressed)
         if response:                                # Only send_message if there is a response; most of the time, there won't be.
+            time.sleep(.5)
             await client.send_message(message.channel, populate(message, response))
 
 
@@ -66,7 +67,7 @@ def process_meta(message: discord.Message) -> (bool, str):
     prefix = message.content.split()[0].lower()
     if prefix == "pocket," or prefix == "pocket:":
         return (True, message.content[7:])          # Remove the prefix ("pocket," or "Pocket:"), which is 5 chars long
-    if message.content.startswith("_") and message.content.endswith("_"):
+    if (message.content.startswith("_") and message.content.endswith("_")) or (message.content.startswith("*") and message.content.endswith("*")):
         return (False, message.content[1:-1])
     return (False, message.content)
 
@@ -95,7 +96,12 @@ def process_commands(message: str) -> str or None:
     if "<reply>" in message:
         try:
             tidbit = [portion.strip() for portion in message.split("<reply>")]
+
+            # Sanitize the trigger some
             tidbit[0] = tidbit[0].lower()       # Lowercase the trigger; it has to be case insensitive.
+            if re.match('^pocket[:,]', tidbit[0]):
+                tidbit[0] = tidbit[0][7:].strip()
+
             c.execute("INSERT OR FAIL INTO comments (triggers, remark, protected) VALUES (?, ?, 0);", tidbit)
             conn.commit()
         except sqlite3.IntegrityError as e:
