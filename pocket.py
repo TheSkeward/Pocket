@@ -17,7 +17,7 @@ client = discord.Client()
 
 ignore_list = []
 
-pocket_size = 7
+pocket_size = 20
 class inventory():
     def size():
         c.execute("SELECT COUNT(*) FROM inventory LIMIT 1;")
@@ -157,7 +157,7 @@ def process_inventory_triggers(message: str, addressed: bool) -> str or None:
     ### LIST INVENTORY commands ###
     if re.compile("inventory").match(message):
         if inventory.size() > 1:
-            response = "_contains "
+            response = "_Pocket contains "
             for item in inventory.list()[:-1]: response += (item + ", ")
             response += "and " + inventory.list()[-1] + "._"
             return response
