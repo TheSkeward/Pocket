@@ -227,6 +227,14 @@ def populate(context: discord.Message, response: str) -> str:
     # -- $item : replaces with a random item in the inventory, if there is one.
     if "$item" in response:
         item_drop = inventory_drop()
+
+        # SPECIAL CASE: when replacing an item, need to ensure that the newly dropped item is not the same item
+        if len(command_response.groups()) > 1:
+            if command_response.group(2) == item_drop:
+                # That is, if the new drop and the old add are the same, fix that.
+                item_drop = inventory_drop()        # Don't worry about no other items; if you're dropping and receiving, you're replacing, which means inventory is full
+                inventory_add(command_response.group(2))
+
         if item_drop: response = response.replace("$item", item_drop)
         else: return populate(context, "inventory empty")   # If empty, can't drop anything.
 
