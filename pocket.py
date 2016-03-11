@@ -109,6 +109,15 @@ def process_commands(message: str) -> str or None:
             return "I already had it that way, $who."
         return "Ok, $who. \"" + tidbit[0] + "\" triggers \"" + tidbit[1] + "\"."
 
+    if message.startswith("literal "):
+        c.execute("SELECT remark FROM comments WHERE triggers=?", (message[8:].lower(),))
+        result = c.fetchall()
+        if result:
+            response = "\"" + message[8:].lower() + "\" triggers:\n"
+            for remark in [result_tuple[0] for result_tuple in result]:
+                response += " - \"" + remark + "\"\n"
+        return "<literal>" + response
+
     result = process_inventory_triggers(message, True)
     if result:
         return result
@@ -200,8 +209,11 @@ def populate(context: discord.Message, response: str) -> str:
     Replaces <command> with an appropriate variation
     """
     # Check for phrase shortcuts
-    command_response = re.compile("^(<.+>)(.*)$").match(response)
+    command_response = re.compile("^(<.+>)(.*)$", re.DOTALL).match(response)
     if command_response:
+        # The unpopulated response flag
+        if command_response.group(1) == "<literal>": return command_response.group(2) if len(command_response.groups()) > 1 else None
+
         c.execute("SELECT response FROM auto_responses WHERE command=?", (command_response.group(1),))
         result = c.fetchall()
         if result:
@@ -238,7 +250,7 @@ def populate(context: discord.Message, response: str) -> str:
         if item_drop: response = response.replace("$item", item_drop)
         else: return populate(context, "inventory empty")   # If empty, can't drop anything.
 
-    return response
+    return response if response else None
 
 
 client.run("a_muse_ing@mail.com", "Amusement4Masses")
