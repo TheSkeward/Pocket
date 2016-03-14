@@ -65,7 +65,7 @@ def process_meta(message: discord.Message) -> (bool, str):
     Cleans up the message, too.
     """
     prefix = message.content.split()[0].lower()
-    if prefix == "pocket," or prefix == "pocket:":
+    if message.content.startswith("pocket,") or message.content.startswith("pocket:"):
         return (True, message.content[7:])          # Remove the prefix ("pocket," or "Pocket:"), which is 5 chars long
     if (message.content.startswith("_") and message.content.endswith("_")) or (message.content.startswith("*") and message.content.endswith("*")):
         return (False, message.content[1:-1])
@@ -241,11 +241,12 @@ def populate(context: discord.Message, response: str) -> str:
         item_drop = inventory_drop()
 
         # SPECIAL CASE: when replacing an item, need to ensure that the newly dropped item is not the same item
-        if len(command_response.groups()) > 1:
-            if command_response.group(2) == item_drop:
-                # That is, if the new drop and the old add are the same, fix that.
-                item_drop = inventory_drop()        # Don't worry about no other items; if you're dropping and receiving, you're replacing, which means inventory is full
-                inventory_add(command_response.group(2))
+        if command_response:
+            if len(command_response.groups()) > 1:
+                if command_response.group(2) == item_drop:
+                    # That is, if the new drop and the old add are the same, fix that.
+                    item_drop = inventory_drop()        # Don't worry about no other items; if you're dropping and receiving, you're replacing, which means inventory is full
+                    inventory_add(command_response.group(2))
 
         if item_drop: response = response.replace("$item", item_drop)
         else: return populate(context, "inventory empty")   # If empty, can't drop anything.
