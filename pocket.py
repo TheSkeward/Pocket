@@ -47,7 +47,7 @@ async def on_ready():
 
 @client.event
 async def on_message(message: discord.Message):
-    logging.info(message.author.name + " (" + message.author.id + ") said \"" + message.content + "\" in " + message.channel.name)
+    logging.info(message.author.name + " (" + message.author.id + ") said \"" + message.content + "\" in " + str(message.channel))
 
     # Ignore those to be ignored
     if not message.author.id in ignore_list:
@@ -116,6 +116,7 @@ def process_commands(message: str) -> str or None:
             response = "\"" + message[8:].lower() + "\" triggers:\n"
             for remark in [result_tuple[0] for result_tuple in result]:
                 response += " - \"" + remark + "\"\n"
+        else: response = "\"" + message[8:].lower() + "\" doesn't trigger anything."
         return "<literal>" + response
 
     result = process_inventory_triggers(message, True)
@@ -233,7 +234,7 @@ def populate(context: discord.Message, response: str) -> str:
     response = response.replace("$who", context.author.name)
 
     # -- $someone : replaces with a random online user
-    online_peeps = list(context.server.members)
+    online_peeps = list(context.server.members) if context.server else [context.author]     # In case of PM
     response = response.replace("$someone", random.choice(online_peeps).name)
 
     # -- $item : replaces with a random item in the inventory, if there is one.
