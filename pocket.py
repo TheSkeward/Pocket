@@ -2,7 +2,9 @@
 
 import discord
 import asyncio
-import sqlite3, random, re, string, time
+import sqlite3, random
+import re, string
+import time, datetime
 import markdown, html.parser
 import logging
 
@@ -38,6 +40,34 @@ class inventory():
     def list():
         c.execute("SELECT item FROM inventory;")
         return [item_tuple[0] for item_tuple in c.fetchall()]
+
+class shutting_up():
+    """
+    Namespace for functions related to shutting up Pocket.
+    """
+    shut_up_durations = {"for a bit": ("be back in a minute.", 60), "for a while": ("be back in five or so.", 300), "for now": ("be back in ten minutes.", 600)}
+    shut_up_till = datetime.datetime.now() - datetime.timedelta(seconds=5)  # Five secondes ago
+    parting_shot = False                                                    # Flag: if true, then allow a message past the shutting up.
+
+    def shut_up(for_how_long: str or int) -> str:
+        if not for_how_long: for_how_long = 10                              # Default timeout
+
+        response, duration = shutting_up.shut_up_durations[for_how_long] if for_how_long in shutting_up.shut_up_durations else ("be back in " + str(for_how_long) + " seconds.", for_how_long)
+        logging.info("\"" + str(duration) + "\"")
+        shutting_up.shut_up_till = datetime.datetime.now() + datetime.timedelta(seconds=duration)
+        return response
+
+    def open_up():
+        shutting_up.shut_up_till = datetime.datetime.now() - datetime.timedelta(seconds=5)
+
+    def get_last_word():
+        shutting_up.parting_shot = True
+
+    def is_shut() -> bool:
+        if shutting_up.parting_shot:
+            shutting_up.parting_shot = False
+            return False
+        return False if shutting_up.shut_up_till < datetime.datetime.now() else True
 
 class message_janitor(html.parser.HTMLParser):
     """
@@ -83,7 +113,7 @@ async def on_message(message: discord.Message):
     if not c.fetchall():
         addressed, content = process_meta(message)
         response = respond(message, content.strip(), addressed)
-        if response:                                # Only send_message if there is a response; most of the time, there won't be.  time.sleep(.5)
+        if response and not shutting_up.is_shut():                          # Only send_message if there is a response; most of the time, there won't be.
             await client.send_message(message.channel, populate(message, response))
 
 
@@ -139,7 +169,7 @@ def respond(context: discord.Message, message: str, addressed: bool) -> str or N
     else: return None
 
 def process_commands(message: str) -> str or None:
-    if "<reply>" in message:
+    if "<reply>" in message.lower():
         try:
             tidbit = [portion.strip() for portion in message.split("<reply>")]
 
@@ -164,6 +194,15 @@ def process_commands(message: str) -> str or None:
                 response += " - \"" + remark + "\"\n"
         else: response = "\"" + message[8:].lower() + "\" doesn't trigger anything."
         return "<literal>" + response
+
+    if message.startswith("shut up"):
+        duration_match = re.compile("shut up(.*)", re.IGNORECASE).match(message)
+        shutting_up.get_last_word()
+        return "Okay, " + shutting_up.shut_up(sanitize_message(duration_match.group(1)))
+    if message.startswith("unshutup"):
+        if shutting_up.is_shut():                                       # Only unshutup if currently shut up.
+            shutting_up.open_up()
+            return "I'M BACK FROM TIMEOUT GUYS : D"
 
     result = process_inventory_triggers(message, True)
     if result:
