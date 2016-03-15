@@ -255,7 +255,7 @@ def populate(context: discord.Message, response: str) -> str:
     Replaces <command> with an appropriate variation
     """
     # Check for phrase shortcuts
-    command_response = re.compile("^(<.+>)(.*)$", re.DOTALL).match(response)
+    command_response = re.compile("^(<[^#]+>)(.*)$", re.DOTALL).match(response)
     if command_response:
         # The unpopulated response flag
         if command_response.group(1) == "<literal>": return command_response.group(2) if len(command_response.groups()) > 1 else None
