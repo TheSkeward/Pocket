@@ -93,19 +93,28 @@ def process_meta(message: discord.Message) -> (bool, str):
     If he was addressed, returns true and the rest of the message. If not, then return false and the message.
     Cleans up the message, too.
     """
-    # First sanitize the input message.
-    raw_message = sanitize_message(message.content)
+    # First remove the prefix if addressed.
+    if message.content.lower().startswith("pocket,") or message.content.lower().startswith("pocket:"):
+        response = [True, message.content[7:]]      # Remove the prefix ("pocket," or "Pocket:"), which is 7 chars long
+    else: response = [False, message.content]
 
-    # Then remove the prefix if addressed.
-    if raw_message.lower().startswith("pocket,") or raw_message.lower().startswith("pocket:"):
-        return (True, raw_message[7:])              # Remove the prefix ("pocket," or "Pocket:"), which is 7 chars long
-    return (False, raw_message)
+    # Then sanitize the input message.
+    response[1] = sanitize_message(response[1])
+
+    return tuple(response)
 
 def sanitize_message(message: str) -> str:
     """
     Cleans up the message of markdown and end punctuation.
     """
-    return message_janitor(message).get_data()
+    message = message_janitor(message).get_data()
+    # Remove end punctuation
+    for outlawed in "?!.":
+        message.rstrip(outlawed)
+    # Remove commas
+    message = re.compile(",").sub('', message)
+
+    return message
 
 def respond(context: discord.Message, message: str, addressed: bool) -> str or None:
     """
