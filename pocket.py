@@ -3,6 +3,7 @@
 import discord
 import asyncio
 import sqlite3, random, re, string, time
+import markdown, html.parser
 import logging
 
 # Logging setup
@@ -40,6 +41,19 @@ class inventory():
         c.execute("SELECT item FROM inventory;")
         return [item_tuple[0] for item_tuple in c.fetchall()]
 
+class HTML_data_strip(html.parser.HTMLParser):
+    """
+    Class to strip text out of HTML, to be used to strip the text out of the Markdown-turned-HTML.
+    """
+    def __init__(self):
+        super().__init__()
+        self.reset()
+        self.fed = []
+    def handle_data(self, data):
+        self.fed.append(data)
+    def get_data(self):
+        return ''.join(self.fed)
+
 @client.event
 async def on_ready():
     logging.info("Logged in as " + client.user.name + " (" + client.user.id + ")")
@@ -64,12 +78,22 @@ def process_meta(message: discord.Message) -> (bool, str):
     If he was addressed, returns true and the rest of the message. If not, then return false and the message.
     Cleans up the message, too.
     """
-    prefix = message.content.split()[0].lower()
-    if message.content.startswith("pocket,") or message.content.startswith("pocket:"):
-        return (True, message.content[7:])          # Remove the prefix ("pocket," or "Pocket:"), which is 5 chars long
-    if (message.content.startswith("_") and message.content.endswith("_")) or (message.content.startswith("*") and message.content.endswith("*")):
-        return (False, message.content[1:-1])
-    return (False, message.content)
+    # First sanitize the input message.
+    raw_message = sanitize_message(message.content)
+
+    # Then remove the prefix if addressed.
+    if raw_message.startswith("pocket,") or raw_message.startswith("pocket:"):
+        return (True, raw_message[7:])              # Remove the prefix ("pocket," or "Pocket:"), which is 7 chars long
+    return (False, raw_message)
+
+def sanitize_message(message: str) -> str:
+    """
+    Cleans up the message of markdown and end punctuation.
+    """
+    html_message = markdown.markdown(message)
+    data_stripper = HTML_data_strip()
+    data_stripper.feed(html_message)
+    return data_stripper.get_data()
 
 def respond(context: discord.Message, message: str, addressed: bool) -> str or None:
     """
