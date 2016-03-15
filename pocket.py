@@ -53,6 +53,9 @@ class message_janitor(html.parser.HTMLParser):
         self.message = message
         self.replying = False
         self.sanitized = []
+
+        # Start the sanitizing
+        self.feed(markdown.markdown(message))
     def handle_starttag(self, tag, attrs):
         # Not very long-term if planning to add more attributes.
         if tag == "reply":
@@ -103,10 +106,7 @@ def sanitize_message(message: str) -> str:
     """
     Cleans up the message of markdown and end punctuation.
     """
-    html_message = markdown.markdown(message)
-    data_stripper = message_janitor(message)
-    data_stripper.feed(html_message)
-    return data_stripper.get_data()
+    return message_janitor(message).get_data()
 
 def respond(context: discord.Message, message: str, addressed: bool) -> str or None:
     """
