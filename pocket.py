@@ -16,8 +16,6 @@ conn = sqlite3.connect("pocket.db")
 c = conn.cursor()
 client = discord.Client()
 
-ignore_list = []
-
 pocket_size = 20
 class inventory():
     def size():
@@ -73,18 +71,19 @@ class message_janitor(html.parser.HTMLParser):
 @client.event
 async def on_ready():
     logging.info("Logged in as " + client.user.name + " (" + client.user.id + ")")
-    ignore_list.append(client.user.id)              # Ignore self, or else Pocket would respond to himself
+    c.execute("INSERT OR IGNORE INTO ignore (ignoramous) VALUES (?);", (client.user.id,))       # Ignore self, or else Pocket would respond to himself
+    conn.commit()
 
 @client.event
 async def on_message(message: discord.Message):
     logging.info(message.author.name + " (" + message.author.id + ") said \"" + message.content + "\" in " + str(message.channel))
 
     # Ignore those to be ignored
-    if not message.author.id in ignore_list:
+    c.execute("SELECT ignoramous FROM ignore WHERE ignoramous=?", (message.author.id,))
+    if not c.fetchall():
         addressed, content = process_meta(message)
         response = respond(message, content.strip(), addressed)
-        if response:                                # Only send_message if there is a response; most of the time, there won't be.
-            time.sleep(.5)
+        if response:                                # Only send_message if there is a response; most of the time, there won't be.  time.sleep(.5)
             await client.send_message(message.channel, populate(message, response))
 
 
