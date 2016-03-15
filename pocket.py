@@ -93,13 +93,10 @@ def process_meta(message: discord.Message) -> (bool, str):
     If he was addressed, returns true and the rest of the message. If not, then return false and the message.
     Cleans up the message, too.
     """
-    # First remove the prefix if addressed.
+    # Remove the prefix if addressed.
     if message.content.lower().startswith("pocket,") or message.content.lower().startswith("pocket:"):
         response = [True, message.content[7:]]      # Remove the prefix ("pocket," or "Pocket:"), which is 7 chars long
     else: response = [False, message.content]
-
-    # Then sanitize the input message.
-    response[1] = sanitize_message(response[1])
 
     return tuple(response)
 
@@ -107,10 +104,14 @@ def sanitize_message(message: str) -> str:
     """
     Cleans up the message of markdown and end punctuation.
     """
+    message = message.lower()
     message = message_janitor(message).get_data()
+
     # Remove end punctuation
-    for outlawed in "?!.":
-        message.rstrip(outlawed)
+    for outlawed in [re.compile("([^?]+)\?"), re.compile("([^!]+)!"), re.compile("([^.]+)\.")]:
+        convicted = outlawed.match(message)
+        if convicted:
+            message = outlawed.sub(convicted.group(1), message)        # Removes end punctuation IIF there's other text.
     # Remove commas
     message = re.compile(",").sub('', message)
 
@@ -142,9 +143,9 @@ def process_commands(message: str) -> str or None:
         try:
             tidbit = [portion.strip() for portion in message.split("<reply>")]
 
-            # Sanitize the trigger some
-            tidbit[0] = tidbit[0].lower()       # Lowercase the trigger; it has to be case insensitive.
-            if re.match('^pocket[:,]', tidbit[0]):
+            # Sanitize the trigger some.
+            tidbit[0] = sanitize_message(tidbit[0])                    # Lowercase the trigger; it has to be case insensitive.
+            if re.match('^pocket[:,]', tidbit[0]):                     # Remove "pocket," or "pocket:" if for some reason it's in the trigger
                 tidbit[0] = tidbit[0][7:].strip()
 
             c.execute("INSERT OR FAIL INTO comments (triggers, remark, protected) VALUES (?, ?, 0);", tidbit)
@@ -155,7 +156,7 @@ def process_commands(message: str) -> str or None:
         return "Ok, $who. \"" + tidbit[0] + "\" triggers \"" + tidbit[1] + "\"."
 
     if message.startswith("literal "):
-        c.execute("SELECT remark FROM comments WHERE triggers=?", (message[8:].lower(),))
+        c.execute("SELECT remark FROM comments WHERE triggers=?", (sanitize_message(message[8:]),))
         result = c.fetchall()
         if result:
             response = "\"" + message[8:].lower() + "\" triggers:\n"
@@ -171,7 +172,7 @@ def process_commands(message: str) -> str or None:
     return None
 
 def process_triggers(message: str) -> str or None:
-    c.execute("SELECT remark FROM comments WHERE triggers=?", (message.lower(),))
+    c.execute("SELECT remark FROM comments WHERE triggers=?", (sanitize_message(message),))
     result = c.fetchall()
     if result:
         return random.choice(result)[0]
