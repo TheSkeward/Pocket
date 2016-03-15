@@ -98,7 +98,7 @@ def process_meta(message: discord.Message) -> (bool, str):
     raw_message = sanitize_message(message.content)
 
     # Then remove the prefix if addressed.
-    if raw_message.startswith("pocket,") or raw_message.startswith("pocket:"):
+    if raw_message.lower().startswith("pocket,") or raw_message.lower().startswith("pocket:"):
         return (True, raw_message[7:])              # Remove the prefix ("pocket," or "Pocket:"), which is 7 chars long
     return (False, raw_message)
 
@@ -219,13 +219,13 @@ def inventory_add(new_item: str) -> str:
     Adds new_item to the inventory. If inventory full, or is a duplicate, doesn't add.
     Either way, returns with an appropriate response.
     """
-    if not inventory.size() < pocket_size:
-        inventory.add(new_item)
-        response = "<replace item>"
-
-    elif not new_item in inventory.list():
-        inventory.add(new_item)
-        response = "<get item>"
+    if not new_item in inventory.list():
+        if not inventory.size() < pocket_size:
+            inventory.add(new_item)
+            response = "<replace item>"
+        else:
+            inventory.add(new_item)
+            response = "<get item>"
     else: response = "<duplicate item>"
 
     if response: return response + new_item
