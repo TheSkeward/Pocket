@@ -41,18 +41,31 @@ class inventory():
         c.execute("SELECT item FROM inventory;")
         return [item_tuple[0] for item_tuple in c.fetchall()]
 
-class HTML_data_strip(html.parser.HTMLParser):
+class message_janitor(html.parser.HTMLParser):
     """
     Class to strip text out of HTML, to be used to strip the text out of the Markdown-turned-HTML.
+    Make sure not to strip out HTML-looking markup, ie <reply>.
     """
-    def __init__(self):
+    def __init__(self, message: str):
         super().__init__()
         self.reset()
-        self.fed = []
+
+        self.message = message
+        self.replying = False
+        self.sanitized = []
+    def handle_starttag(self, tag, attrs):
+        # Not very long-term if planning to add more attributes.
+        if tag == "reply":
+            self.sanitized.append("<reply>")
+            self.replying = True
     def handle_data(self, data):
-        self.fed.append(data)
+        if not self.replying:
+            self.sanitized.append(data)
     def get_data(self):
-        return ''.join(self.fed)
+        # If is a tidbit, then keep the markdown for the rest of the message.
+        if "<reply>" in self.message:
+            self.sanitized.append(self.message[self.message.index("<reply>") + 7:])
+        return ''.join(self.sanitized)
 
 @client.event
 async def on_ready():
@@ -91,7 +104,7 @@ def sanitize_message(message: str) -> str:
     Cleans up the message of markdown and end punctuation.
     """
     html_message = markdown.markdown(message)
-    data_stripper = HTML_data_strip()
+    data_stripper = message_janitor(message)
     data_stripper.feed(html_message)
     return data_stripper.get_data()
 
