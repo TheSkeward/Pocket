@@ -86,3 +86,4 @@ celerybeat-schedule
 
 # Ignore database file; that will grow variably
 pocket.db
+*.db-journal
