@@ -98,6 +98,43 @@ class message_janitor(html.parser.HTMLParser):
             self.sanitized.append(self.message[self.message.index("<reply>") + 7:])
         return ''.join(self.sanitized)
 
+class message_logger():
+    """
+    Logs the messages of channels for reference.
+    """
+    logs = {}
+    log_max = 100
+    def log(channel: discord.Channel, message: discord.Message):
+        if not channel in message_logger.logs:
+            message_logger.logs[channel] = ["" for _ in range(message_logger.log_max)]
+
+        # Add to the end, delete from the beginning.
+        message_logger.logs[channel].append(message.author.id + ":" + message.content)
+        del message_logger.logs[channel][:1]
+
+    def get_logs(channel: discord.Channel) -> (str):
+        return message_logger.logs[channel] if channel in message_logger.logs else []
+
+    def remember(author: discord.User, message: str) -> bool:
+        """
+        Remembers a quote. Returns success value.
+        """
+        try:
+            c.execute("INSERT INTO quotes (author_id, quote) VALUES (?, ?);", (author.id, message))
+            conn.commit()
+            return True
+        except sqlite3.IntegrityError:
+            return False
+
+    def recall(speaker: discord.User) -> str:
+        """
+        Returns a random quote by 'speaker'
+        """
+        c.execute("SELECT quote FROM quotes WHERE author_id=?;", (speaker.id,))
+        quotes = tuple(quote[0] for quote in c.fetchall())
+        if quotes: return speaker.name + " said \"" + random.choice(quotes).split(":", 1)[1] + "\""
+        else: return "<no quote>"
+
 @client.event
 async def on_ready():
     logging.info("Logged in as " + client.user.name + " (" + client.user.id + ")")
@@ -107,6 +144,7 @@ async def on_ready():
 @client.event
 async def on_message(message: discord.Message):
     logging.info(message.author.name + " (" + message.author.id + ") said \"" + message.content + "\" in " + str(message.channel))
+    message_logger.log(message.channel, message)
 
     # Ignore those to be ignored
     c.execute("SELECT ignoramous FROM ignore WHERE ignoramous=?", (message.author.id,))
@@ -114,6 +152,7 @@ async def on_message(message: discord.Message):
         addressed, content = process_meta(message)
         response = respond(message, content.strip(), addressed)
         if response and not shutting_up.is_shut():                          # Only send_message if there is a response; most of the time, there won't be.
+            time.sleep(.5)
             await client.send_message(message.channel, populate(message, response))
 
 
@@ -121,14 +160,13 @@ def process_meta(message: discord.Message) -> (bool, str):
     """
     Determines if Pocket was directly addressed, ie "Pocket, inspire me" or "pocket: give me a suggestion"
     If he was addressed, returns true and the rest of the message. If not, then return false and the message.
-    Cleans up the message, too.
     """
     # Remove the prefix if addressed.
     if message.content.lower().startswith("pocket,") or message.content.lower().startswith("pocket:"):
-        response = [True, message.content[7:]]      # Remove the prefix ("pocket," or "Pocket:"), which is 7 chars long
-    else: response = [False, message.content]
+        response = (True, message.content[7:])      # Remove the prefix ("pocket," or "Pocket:"), which is 7 chars long
+    else: response = (False, message.content)
 
-    return tuple(response)
+    return response
 
 def sanitize_message(message: str) -> str:
     """
@@ -157,7 +195,7 @@ def respond(context: discord.Message, message: str, addressed: bool) -> str or N
     # If Pocket was addressed, then it might be a command
     if addressed:
         # Check for commands
-        response = process_commands(message)
+        response = process_commands(message, context)
         if response: return response
 
     # If here, then it's not a command. Check for triggers.
@@ -168,7 +206,8 @@ def respond(context: discord.Message, message: str, addressed: bool) -> str or N
     if addressed: return "<unknown>"
     else: return None
 
-def process_commands(message: str) -> str or None:
+def process_commands(message: str, context: discord.Message=None) -> str or None:
+    ### ----- REPLY COMMAND ----- ###
     if "<reply>" in message.lower():
         try:
             tidbit = [portion.strip() for portion in message.split("<reply>")]
@@ -183,8 +222,9 @@ def process_commands(message: str) -> str or None:
         except sqlite3.IntegrityError as e:
             # If IntegrityError, Pocket already has this tidbit.
             return "I already had it that way, $who."
-        return "Ok, $who. \"" + tidbit[0] + "\" triggers \"" + tidbit[1] + "\"."
+        return "<literal>Ok then. \"" + tidbit[0] + "\" triggers \"" + tidbit[1] + "\"."
 
+    ### ----- LITERAL COMMAND ----- ###
     if message.startswith("literal "):
         c.execute("SELECT remark FROM comments WHERE triggers=?", (sanitize_message(message[8:]),))
         result = c.fetchall()
@@ -195,6 +235,7 @@ def process_commands(message: str) -> str or None:
         else: response = "\"" + message[8:].lower() + "\" doesn't trigger anything."
         return "<literal>" + response
 
+    ### ----- SHUT UP COMMANDS ----- ###
     if message.startswith("shut up"):
         duration_match = re.compile("shut up(.*)", re.IGNORECASE).match(message)
         shutting_up.get_last_word()
@@ -204,6 +245,23 @@ def process_commands(message: str) -> str or None:
             shutting_up.open_up()
             return "I'M BACK FROM TIMEOUT GUYS : D"
 
+    ### ----- REMEMBER/QUOTE COMMANDS ----- ###
+    remember = re.match("remember <@\d+> (.+)$", message)
+    if remember:
+        mentioned = context.mentions[0]
+        quote_fragment = remember.group(1)
+        remember_this = ""
+        for quote in message_logger.get_logs(context.channel):
+            quote_portions = quote.split(":", 1)
+            if mentioned.id == quote_portions[0] and quote_fragment in quote_portions[1]:       # If a) the mentioned id == the quote's id, and b) the fragment is contained in the quote.
+                if remember_this == "": remember_this = quote_portions[1]
+                else: return "<vague quote>"                            # There's already a quote that matches the fragment; this is too vague.
+        message_logger.remember(mentioned, remember_this)
+        return "Okay, $who, remembering that " + mentioned.name + " said \"" + remember_this + "\""
+    recall = re.match("<@\d+> quotes?", message)
+    if recall: return message_logger.recall(context.mentions[0])
+
+    ### ----- INVENTORY COMMANDS ----- ###
     result = process_inventory_triggers(message, True)
     if result:
         return result
@@ -227,7 +285,7 @@ def process_inventory_triggers(message: str, addressed: bool) -> str or None:
     Proccesses a message (both triggers and commmands) regarding the inventory.
     """
     # Prep the message for processing
-    message = message.strip(".").strip("!")
+    #message = sanitize_message(message)
 
     ### GIVE ITEM commands ###
     # Addressed commands

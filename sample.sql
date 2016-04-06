@@ -13,6 +13,8 @@ INSERT OR IGNORE INTO auto_responses (command, response) VALUES
     ('<unknown>', "How would I bloody know?"),
     ('<unknown>', "ERROR 432018: COMMAND NOT IN DATABASE. PLEASE CONTACT YOUR LOCAL GALAXY ENGINEER"),
     ('<unknown>', "BEEEEEEEEeeeeeeeEEeeeEEEEEPPP"),
+    ('<unknown>', "Please restate your question in the form of a bucket."),
+    ('<unknown>', "Please restate your question in the form of a giraffe."),
     ('<get item>', "Thanks, I'll take %received."),
     ('<get item>', "Sure, I'll take %received."),
     ('<get item>', "Okay, $who."),
@@ -22,4 +24,9 @@ INSERT OR IGNORE INTO auto_responses (command, response) VALUES
     ('<inventory empty>', "But I'm empty : ("),
     ('<drop item>', "_gives $who $item_"),
     ('<drop item>', "_hands $who $item_"),
-    ('<drop item>', "_drops $item_");
+    ('<drop item>', "_drops $item_"),
+    ('<vague quote>', "You're going to have to be a little more specific than that, $who."),
+    ('<vague quote>', "That doesn't give me a lot to work with."),
+    ('<no quote>', "Y'all haven't old me to remember anything about this guy."),
+    ('<no quote>', "Lemme think.... .. .... .. Nope. I got nothin'."),
+    ('<no quote>', "I don't remember anything.");
