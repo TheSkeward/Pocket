@@ -1,2 +1,2 @@
-discord.py=='0.16.12'
-markdown=='
+discord.py==1.3.3
+markdown==1.3.3
