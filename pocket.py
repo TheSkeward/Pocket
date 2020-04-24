@@ -138,7 +138,7 @@ class message_logger():
 
 @client.event
 async def on_ready():
-    logging.info("Logged in as " + client.user.name + " (" + client.user.id + ")")
+    logging.info("Logged in as " + client.user.name + " (" + str(client.user.id) + ")")
     c.execute("INSERT OR IGNORE INTO ignore (ignoramous) VALUES (?);", (client.user.id,))       # Ignore self, or else Pocket would respond to himself
     conn.commit()
 
