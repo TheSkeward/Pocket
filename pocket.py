@@ -378,7 +378,7 @@ def populate(context: discord.Message, response: str) -> str:
     response = response.replace("$who", context.author.name)
 
     # -- $someone : replaces with a random online user
-    online_peeps = list(context.server.members) if context.server else [context.author]     # In case of PM
+    online_peeps = list(context.guild.members) if context.guild else [context.author]     # In case of PM
     response = response.replace("$someone", random.choice(online_peeps).name)
 
     # -- $item : replaces with a random item in the inventory, if there is one.
