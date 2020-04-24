@@ -154,7 +154,7 @@ async def on_message(message: discord.Message):
         response = respond(message, content.strip(), addressed)
         if response and not shutting_up.is_shut():                          # Only send_message if there is a response; most of the time, there won't be.
             time.sleep(.5)
-            await client.send_message(message.channel, populate(message, response))
+            await message.channel.send(populate(message, response))
 
 
 def process_meta(message: discord.Message) -> (bool, str):
