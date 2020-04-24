@@ -144,7 +144,7 @@ async def on_ready():
 
 @client.event
 async def on_message(message: discord.Message):
-    logging.info(message.author.name + " (" + message.author.id + ") said \"" + message.content + "\" in " + str(message.channel))
+    logging.info(message.author.name + " (" + str(message.author.id) + ") said \"" + message.content + "\" in " + str(message.channel))
     message_logger.log(message.channel, message)
 
     # Ignore those to be ignored
