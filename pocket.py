@@ -7,6 +7,7 @@ import re, string
 import time, datetime
 import markdown, html.parser
 import logging
+import os
 
 # Logging setup
 logging.basicConfig(level=logging.INFO)
@@ -396,3 +397,5 @@ def populate(context: discord.Message, response: str) -> str:
         else: return populate(context, "inventory empty")   # If empty, can't drop anything.
 
     return response if response else None
+
+client.run(os.environ[“BOT_TOKEN”])
