@@ -104,7 +104,7 @@ class message_logger():
     """
     logs = {}
     log_max = 100
-    def log(channel: discord.Channel, message: discord.Message):
+    def log(channel: discord.TextChannel, message: discord.Message):
         if not channel in message_logger.logs:
             message_logger.logs[channel] = ["" for _ in range(message_logger.log_max)]
 
@@ -112,7 +112,7 @@ class message_logger():
         message_logger.logs[channel].append(message.author.id + ":" + message.content)
         del message_logger.logs[channel][:1]
 
-    def get_logs(channel: discord.Channel) -> (str):
+    def get_logs(channel: discord.TextChannel) -> (str):
         return message_logger.logs[channel] if channel in message_logger.logs else []
 
     def remember(author: discord.User, message: str) -> bool:
