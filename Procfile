@@ -1,1 +1,1 @@
-worker: python pocket.py
+worker: python3 pocket.py
