@@ -110,7 +110,7 @@ class message_logger():
             message_logger.logs[channel] = ["" for _ in range(message_logger.log_max)]
 
         # Add to the end, delete from the beginning.
-        message_logger.logs[channel].append(message.author.id + ":" + message.content)
+        message_logger.logs[channel].append(str(message.author.id) + ":" + message.content)
         del message_logger.logs[channel][:1]
 
     def get_logs(channel: discord.TextChannel) -> (str):
