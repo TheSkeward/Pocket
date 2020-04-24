@@ -396,6 +396,3 @@ def populate(context: discord.Message, response: str) -> str:
         else: return populate(context, "inventory empty")   # If empty, can't drop anything.
 
     return response if response else None
-
-
-client.run("a_muse_ing@mail.com", "Amusement4Masses")
