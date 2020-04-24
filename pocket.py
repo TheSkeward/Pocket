@@ -398,4 +398,4 @@ def populate(context: discord.Message, response: str) -> str:
 
     return response if response else None
 
-client.run(os.environ[“BOT_TOKEN”])
+client.run(os.environ["BOT_TOKEN"])
