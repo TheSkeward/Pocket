@@ -116,7 +116,7 @@ class message_logger():
     def get_logs(channel: discord.TextChannel) -> (str):
         return message_logger.logs[channel] if channel in message_logger.logs else []
 
-    def remember(author: discord.User, message: str) -> bool:
+    def  (author: discord.User, message: str) -> bool:
         """
         Remembers a quote. Returns success value.
         """
@@ -247,7 +247,7 @@ def process_commands(message: str, context: discord.Message=None) -> str or None
             return "I'M BACK FROM TIMEOUT GUYS : D"
 
     ### ----- REMEMBER/QUOTE COMMANDS ----- ###
-    remember = re.match("remember <@\d+> (.+)$", message)
+    remember = re.match(r"remember <@\d+> (.+)$", message)
     if remember:
         mentioned = context.mentions[0]
         quote_fragment = remember.group(1)
@@ -259,7 +259,7 @@ def process_commands(message: str, context: discord.Message=None) -> str or None
                 else: return "<vague quote>"                            # There's already a quote that matches the fragment; this is too vague.
         message_logger.remember(mentioned, remember_this)
         return "Okay, $who, remembering that " + mentioned.name + " said \"" + remember_this + "\""
-    recall = re.match("<@\d+> quotes?", message)
+    recall = re.match(r"<@\d+> quotes?", message)
     if recall: return message_logger.recall(context.mentions[0])
 
     ### ----- INVENTORY COMMANDS ----- ###
