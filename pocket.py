@@ -136,11 +136,16 @@ class message_logger():
         if quotes: return speaker.name + " said \"" + random.choice(quotes).split(":", 1)[1] + "\""
         else: return "<no quote>"
 
+def ignore_user(u):
+    logging.info("Adding user: {0}, id: {1} to ignorelist".format(u.name, u.id))
+    c.execute("INSERT OR IGNORE INTO ignore (ignoramous) VALUES (?);", (u.id,))
+    conn.commit()
+
 @client.event
 async def on_ready():
     logging.info("Logged in as " + client.user.name + " (" + str(client.user.id) + ")")
-    c.execute("INSERT OR IGNORE INTO ignore (ignoramous) VALUES (?);", (client.user.id,))       # Ignore self, or else Pocket would respond to himself
-    conn.commit()
+    # Ignore self, or else Pocket would respond to himself
+    ignore_user(client.user)
 
 @client.event
 async def on_message(message: discord.Message):
@@ -235,6 +240,11 @@ def process_commands(message: str, context: discord.Message=None) -> str or None
                 response += " - \"" + remark + "\"\n"
         else: response = "\"" + message[8:].lower() + "\" doesn't trigger anything."
         return "<literal>" + response
+
+    ### ----- IGNORE COMMANDS ------ ###
+    if message.startswith("ignore me"):
+        ignore_user(context.author)
+        return "Permanently ignoring {0}!".format(context.author.name)
 
     ### ----- SHUT UP COMMANDS ----- ###
     if message.startswith("shut up"):
