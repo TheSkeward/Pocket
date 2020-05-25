@@ -244,7 +244,7 @@ def process_commands(message: str, context: discord.Message=None) -> str or None
     ### ----- IGNORE COMMANDS ------ ###
     if message.startswith("ignore me"):
         ignore_user(context.author)
-        return None
+        return "Permanently ignoring {0}!".format(context.author.name)
 
     ### ----- SHUT UP COMMANDS ----- ###
     if message.startswith("shut up"):
